@@ -282,6 +282,11 @@ var Mafia = {
 		}
 		var wasSheriff = victim.id === st.sheriff;
 
+		// the council was built from the old case; close it before the case changes under it
+		if(Mafia._council && Events.activeEvent() === Mafia._council) {
+			Events.endEvent();
+		}
+
 		var firstKill = st.kills === 0;
 		st.kills++;
 		Mafia.openCase(victim, killer);
@@ -495,6 +500,11 @@ var Mafia = {
 		var st = Mafia.state();
 		var c = st.caseFile;
 		var name = Mafia.nameOf(id);
+		if(!Mafia.byId(id)) {
+			// a stale button: never let it cost a villager who wasn't chosen
+			Engine.log('execute: ' + id + ' is not in the village');
+			return [name + _(' is already gone.')];
+		}
 		if(c) c.accused = id;
 
 		if(id === st.killer) {
@@ -539,7 +549,7 @@ var Mafia = {
 		}
 		Mafia.removeVillager(id);
 		Outside.killVillagers(1);
-		st.fear = Math.max(Mafia._FEAR_FLOOR, st.fear - Mafia._FEAR_STEP);
+		st.fear = Math.max(Mafia._FEAR_FLOOR, Math.round((st.fear - Mafia._FEAR_STEP) * 100) / 100);
 		Outside.updateVillageIncome();
 		Mafia.save();
 		Notifications.notify(null, name + _(' was innocent. the village knows it.'));
@@ -664,6 +674,7 @@ var Mafia = {
 				scenes['hear_' + i] = {
 					text: [],
 					onLoad: function() {
+						if(Mafia.isStale(c)) { this.text = [Mafia.STALE_TEXT]; return; }
 						var cf = Mafia.state().caseFile;
 						var t = [Mafia.suspectLine(id)];
 						cf.testimony[id].forEach(function(l) { t.push('"' + l + '"'); });
@@ -678,7 +689,7 @@ var Mafia = {
 				scenes['check_' + i] = {
 					text: [],
 					onLoad: function() {
-						this.text = [Mafia.checkAlibi(id)];
+						this.text = Mafia.isStale(c) ? [Mafia.STALE_TEXT] : [Mafia.checkAlibi(id)];
 					},
 					buttons: checkButtons
 				};
@@ -688,7 +699,7 @@ var Mafia = {
 				scenes['verdict_' + i] = {
 					text: [],
 					onLoad: function() {
-						this.text = Mafia.execute(id, false);
+						this.text = Mafia.isStale(c) ? [Mafia.STALE_TEXT] : Mafia.execute(id, false);
 					},
 					buttons: verdictButtons
 				};
@@ -765,7 +776,15 @@ var Mafia = {
 
 		startButtons['mf_leave'] = { text: _('leave'), nextScene: 'end' };
 
-		Events.startEvent({ title: _('The Council'), scenes: scenes });
+		Mafia._council = { title: _('The Council'), scenes: scenes };
+		Events.startEvent(Mafia._council);
+	},
+
+	STALE_TEXT: _('a new day has come. open the council again.'),
+
+	// true when the case a council panel was built from has since been replaced or closed
+	isStale: function(c) {
+		return !c || Mafia.state().caseFile !== c;
 	},
 
 	canAppoint: function() {
@@ -792,7 +811,7 @@ var Mafia = {
 				who + _(' nods. "') + name + _(' was with me. all night."') :
 				who + _(' isn\'t sure. "maybe. it was dark."');
 		}
-		c.checksLeft--;
+		if(Mafia.byId(al.partner)) c.checksLeft--;
 		c.checks[id] = _('alibi: ') + result;
 		Mafia.save();
 		return result;

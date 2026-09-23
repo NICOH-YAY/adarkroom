@@ -519,7 +519,7 @@ var Outside = {
 				var curIncome = $SM.getIncome(worker);
 				for(var store in income.stores) {
 					// mod: fear of the murderer slows all village work
-					stores[store] = income.stores[store] * num * Mafia.workRate();
+					stores[store] = Math.round(income.stores[store] * num * Mafia.workRate() * 100) / 100;
 					if(curIncome[store] != stores[store]) needsUpdate = true;
 					var row = $('<div>').addClass('storeRow');
 					$('<div>').addClass('row_key').text(_(store)).appendTo(row);

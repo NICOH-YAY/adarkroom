@@ -50,7 +50,7 @@ Labels follow the course's four evidence labels: `code`, `manual`, `observed`, `
 | Mod: one killing per night once the village has 4 or more people | `code`, script/mafia.js `nightfall` / `murder` |
 | Mod: the murderer is always among the 5 suspects | `code`, script/mafia.js `openCase` |
 | Mod: fear multiplies village income by 0.8, down to a floor of 0.5 | `code`, script/mafia.js `workRate`, script/outside.js line 522 |
-| Mod: a careful player can identify the murderer within 1 to 2 days | `observed` in simulation: a perfect-logic solver over 3,000 seeded cases found the murderer on day 1 in 52% of cases and by day 2 in 94%, with no wrong deductions (62% and 99% with a sheriff). This is not yet `observed` with human players. |
+| Mod: a careful player can identify the murderer within 1 to 2 days | `observed` in simulation: a perfect-logic solver over 3,000 random cases found the murderer on day 1 in about 52 to 53% of cases and by day 2 in about 94 to 95%, with no wrong deductions (about 63% and 99% with a sheriff). Rerun it by pasting `tools/mafia-sim.js` into the browser console. This is not yet `observed` with human players. |
 | Mod: people feel suspicion, and the game does not play like a spreadsheet | `assumed`, needs a human playtest |
 
 ## Acceptance trace
