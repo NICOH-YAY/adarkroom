@@ -49,6 +49,9 @@ var Button = {
 
 	saveCooldown: true,
 
+	// mod: multiplier applied to every button cooldown
+	COOLDOWN_SCALE: 0.5,
+
 	setDisabled: function(btn, disabled) {
 		if(btn) {
 			if(!disabled && !btn.data('onCooldown')) {
@@ -77,6 +80,8 @@ var Button = {
 			if(typeof option == 'number') {
 				cd = option;
 			}
+			// mod: every action cooldown runs at half length
+			cd *= Button.COOLDOWN_SCALE;
 			// param "start" takes value from cooldown time if not specified
 			var start, left;
 			switch(option){

@@ -197,7 +197,7 @@
       $('<span>')
         .addClass('menuBtn')
         .text(_('github.'))
-        .click(function() { window.open('https://github.com/doublespeakgames/adarkroom'); })
+        .click(function() { window.open('https://github.com/NICOH-YAY/adarkroom'); })
         .appendTo(menu);
 
       // Register keypress handlers

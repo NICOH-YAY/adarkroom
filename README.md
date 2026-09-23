@@ -1,3 +1,6 @@
+> **This fork is a mod: _The Night Council_.** A murderer hides among the villagers, one of them dies each night, and you have to find the killer from testimony and alibis. All button cooldowns are also halved.
+> [Play the mod](https://nicoh-yay.github.io/adarkroom/) · [Rules, evidence map and acceptance trace](MOD.md) · original game by [doublespeak games](https://github.com/doublespeakgames/adarkroom), MPL 2.0.
+
 A Dark Room
 ===========
 > "awake. head throbbing. vision blurry. come light the fire."

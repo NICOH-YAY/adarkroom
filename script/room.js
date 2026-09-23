@@ -72,6 +72,22 @@ var Room = {
 			},
 			audio: AudioLibrary.BUILD_LODGE
 		},
+		'watchhouse': {
+			// mod: lets the village appoint a sheriff
+			name: _('watchhouse'),
+			button: null,
+			maximum: 1,
+			availableMsg: _('the villagers want someone to keep watch at night'),
+			buildMsg: _('a watchhouse goes up at the edge of the village. someone should take the post.'),
+			type: 'building',
+			cost: function () {
+				return {
+					wood: 150,
+					fur: 30
+				};
+			},
+			audio: AudioLibrary.BUILD_LODGE
+		},
 		'trading post': {
 			name: _('trading post'),
 			button: null,

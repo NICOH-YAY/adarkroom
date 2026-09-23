@@ -172,6 +172,9 @@ var Outside = {
 		}).appendTo('div#outsidePanel');
 
 		Outside.updateTrapButton();
+
+		// mod: named villagers and the murderer
+		Mafia.init();
 	},
 	
 	getMaxPopulation: function() {
@@ -515,7 +518,8 @@ var Outside = {
 				var needsUpdate = false;
 				var curIncome = $SM.getIncome(worker);
 				for(var store in income.stores) {
-					stores[store] = income.stores[store] * num;
+					// mod: fear of the murderer slows all village work
+					stores[store] = income.stores[store] * num * Mafia.workRate();
 					if(curIncome[store] != stores[store]) needsUpdate = true;
 					var row = $('<div>').addClass('storeRow');
 					$('<div>').addClass('row_key').text(_(store)).appendTo(row);
@@ -585,6 +589,7 @@ var Outside = {
 		}
 		Outside.updateTrapButton();
 		Outside.updateVillage(true);
+		Mafia.updateCouncilButton();
 
 		Engine.moveStoresView($('#village'), transition_diff);
 		
