@@ -10,7 +10,9 @@
  * Rules and evidence labels for this mod live in MOD.md.
  */
 var Mafia = {
-	_DAY_LENGTH: 3 * 60 * 1000,      // one village day in ms (hyper mode halves it)
+	_DAYLIGHT: 3 * 60 * 1000,        // daylight in ms (hyper mode halves it)
+	_NIGHT: 2 * 60 * 1000,           // night in ms. one full day is 5 minutes
+	_TYPE_SPEED: 15,                 // ms per letter in dialog boxes
 	_MURDERER_CHANCE: 0.1,           // chance any single arrival is the murderer
 	_MIN_POP_TO_KILL: 4,             // the murderer waits until the village has this many people
 	_MAX_SUSPECTS: 5,
@@ -137,7 +139,8 @@ var Mafia = {
 		var st = $SM.get('game.mafia');
 		if(!st) {
 			$SM.set('game.mafia', {
-				day: 0,
+				day: 1,
+				phase: 'day',
 				nextId: 1,
 				villagers: [],
 				killer: null,
@@ -151,7 +154,9 @@ var Mafia = {
 		// villagers already living here before the mod loaded are all innocent
 		Mafia.reconcile(true);
 		$.Dispatch('stateUpdate').subscribe(Mafia.handleStateUpdates);
-		Mafia.scheduleNight();
+		if(!Mafia.state().phase) Mafia.state().phase = 'day';
+		Mafia.applyPhase();
+		Mafia.schedulePhase();
 		Mafia.updateCouncilButton();
 	},
 
@@ -255,21 +260,62 @@ var Mafia = {
 		}
 	},
 
-	/* ---------- the night ---------- */
+	/* ---------- day and night ---------- */
 
-	scheduleNight: function() {
-		clearTimeout(Mafia._nightTimer);
-		Mafia._nightTimer = Engine.setTimeout(Mafia.nightfall, Mafia._DAY_LENGTH);
+	isNight: function() {
+		var st = $SM.get('game.mafia');
+		return !!st && st.phase === 'night';
 	},
 
-	nightfall: function() {
-		var st = Mafia.state();
-		st.day++;
-		if(st.killer !== null && st.villagers.length >= Mafia._MIN_POP_TO_KILL) {
-			Mafia.murder();
+	schedulePhase: function() {
+		clearTimeout(Mafia._phaseTimer);
+		var length = Mafia.isNight() ? Mafia._NIGHT : Mafia._DAYLIGHT;
+		Mafia._phaseTimer = Engine.setTimeout(Mafia.advancePhase, length);
+	},
+
+	advancePhase: function() {
+		if(Mafia.isNight()) {
+			Mafia.dawn();
+		} else {
+			Mafia.dusk();
 		}
 		Mafia.save();
-		Mafia.scheduleNight();
+		Mafia.schedulePhase();
+	},
+
+	dusk: function() {
+		Mafia.state().phase = 'night';
+		Mafia.applyPhase();
+		Notifications.notify(null, _('night falls. too dark to gather wood.'));
+	},
+
+	// the murderer strikes in the dark, so the body is found at dawn
+	dawn: function() {
+		var st = Mafia.state();
+		st.phase = 'day';
+		st.day++;
+		Mafia.applyPhase();
+		if(st.killer !== null && st.villagers.length >= Mafia._MIN_POP_TO_KILL) {
+			Mafia.murder();
+		} else {
+			Notifications.notify(null, _('dawn. the village wakes.'));
+		}
+	},
+
+	// sun or moon in the header, and no wood gathering at night
+	applyPhase: function() {
+		var night = Mafia.isNight();
+		var gather = $('div#gatherButton');
+		if(gather.length) Button.setDisabled(gather, night);
+		var marker = $('div#dayPhase');
+		if(!marker.length) {
+			marker = $('<div>').attr('id', 'dayPhase').appendTo('div#header');
+		}
+		marker.empty();
+		$('<span>').addClass('glyph').text(night ? '\u263E' : '\u2600').appendTo(marker);
+		$('<span>').text((night ? _('night ') : _('day ')) + Mafia.state().day).appendTo(marker);
+		marker.attr('title', night ? _('too dark to gather wood') : _('daylight'));
+		$('body').toggleClass('night', night);
 	},
 
 	murder: function() {
@@ -456,6 +502,7 @@ var Mafia = {
 						killer.name + _(' is standing over ') + victim.name + '.'
 					],
 					blink: true,
+					decorate: Mafia.dialog(function() { return killer; }, true),
 					buttons: {
 						'mf_seize': {
 							text: _('seize them'),
@@ -472,6 +519,7 @@ var Mafia = {
 					onLoad: function() {
 						this.text = Mafia.execute(killer.id, true);
 					},
+					decorate: Mafia.dialog(null, true),
 					buttons: {
 						'mf_end': { text: _('go home'), nextScene: 'end' }
 					}
@@ -485,6 +533,7 @@ var Mafia = {
 						Mafia.state().caseFile.hints.push(_('you saw the killer run. ') + trace);
 						Mafia.save();
 					},
+					decorate: Mafia.dialog(null, true),
 					buttons: {
 						'mf_end': { text: _('go home'), nextScene: 'end' }
 					}
@@ -651,6 +700,7 @@ var Mafia = {
 				}
 				this.text = t;
 			},
+			decorate: Mafia.dialog(null, false),
 			buttons: startButtons
 		};
 
@@ -676,11 +726,13 @@ var Mafia = {
 					onLoad: function() {
 						if(Mafia.isStale(c)) { this.text = [Mafia.STALE_TEXT]; return; }
 						var cf = Mafia.state().caseFile;
-						var t = [Mafia.suspectLine(id)];
+						// the name is on the portrait already, so the first line starts at the temperament
+						var t = [Mafia.suspectLine(id).slice(c.people[id].name.length + 2)];
 						cf.testimony[id].forEach(function(l) { t.push('"' + l + '"'); });
 						if(cf.checks[id]) t.push(cf.checks[id]);
 						this.text = t;
 					},
+					decorate: Mafia.dialog(function() { return c.people[id]; }, true),
 					buttons: hearButtons
 				};
 
@@ -691,6 +743,7 @@ var Mafia = {
 					onLoad: function() {
 						this.text = Mafia.isStale(c) ? [Mafia.STALE_TEXT] : [Mafia.checkAlibi(id)];
 					},
+					decorate: Mafia.dialog(function() { return c.people[c.alibis[id].partner]; }, true),
 					buttons: checkButtons
 				};
 
@@ -701,6 +754,7 @@ var Mafia = {
 					onLoad: function() {
 						this.text = Mafia.isStale(c) ? [Mafia.STALE_TEXT] : Mafia.execute(id, false);
 					},
+					decorate: Mafia.dialog(function() { return c.people[id]; }, true),
 					buttons: verdictButtons
 				};
 			});
@@ -734,6 +788,7 @@ var Mafia = {
 							_('there is no sheriff. your word is the law.')
 					];
 				},
+				decorate: Mafia.dialog(null, false),
 				buttons: accuseButtons
 			};
 		}
@@ -758,6 +813,7 @@ var Mafia = {
 				text: candidates.map(function(v) {
 					return v.name + ', ' + v.trait + ', ' + Mafia.MARKS[v.mark].look + '.';
 				}).concat([_('who keeps the watch?')]),
+				decorate: Mafia.dialog(null, false),
 				buttons: appointButtons
 			};
 		}
@@ -771,6 +827,7 @@ var Mafia = {
 				for(var i = 0; i < names.length; i += 6) t.push(names.slice(i, i + 6).join(', '));
 				this.text = t;
 			},
+			decorate: Mafia.dialog(null, false),
 			buttons: { 'mf_rback': { text: _('back'), nextScene: { 1: 'start' } } }
 		};
 
@@ -781,6 +838,49 @@ var Mafia = {
 	},
 
 	STALE_TEXT: _('a new day has come. open the council again.'),
+
+	/* ---------- dialog boxes ---------- */
+
+	// returns a scene `decorate` hook: retro frame, optional portrait and name, optional typing
+	dialog: function(speaker, typewriter) {
+		return function(desc) {
+			desc.closest('.eventPanel').addClass('rpg');
+			var person = speaker ? speaker() : null;
+			if(person) {
+				var box = $('<div>').addClass('rpgSpeaker');
+				box.append(Portrait.draw(person, desc[0]));
+				$('<div>').addClass('rpgName').text(person.name).appendTo(box);
+				box.prependTo(desc);
+			}
+			if(typewriter) Mafia.typewrite(desc);
+		};
+	},
+
+	// types the scene's lines out one letter at a time. a click shows everything.
+	typewrite: function(desc) {
+		var lines = desc.children('div').not('.rpgSpeaker');
+		var full = lines.map(function() { return $(this).text(); }).get();
+		var token = {};
+		Mafia._typing = token;
+		lines.text('');
+		var li = 0, ci = 0;
+		var finish = function() {
+			if(Mafia._typing === token) Mafia._typing = null;
+			lines.each(function(i) { $(this).text(full[i]); });
+			desc.off('click.rpg');
+			if(lines.length) $('<span>').addClass('rpgCursor').text(' \u25BC').appendTo(lines.last());
+		};
+		desc.off('click.rpg').on('click.rpg', finish);
+		var step = function() {
+			if(Mafia._typing !== token || !$.contains(document.documentElement, desc[0])) return;
+			if(li >= lines.length) { finish(); return; }
+			ci++;
+			$(lines[li]).text(full[li].slice(0, ci));
+			if(ci >= full[li].length) { li++; ci = 0; }
+			setTimeout(step, Mafia._TYPE_SPEED);
+		};
+		step();
+	},
 
 	// true when the case a council panel was built from has since been replaced or closed
 	isStale: function(c) {
@@ -844,9 +944,12 @@ var Mafia = {
 		};
 	},
 
-	// console helper for playtests: skip ahead one night
+	// console helper for playtests: run the rest of today and tonight, up to the next dawn
 	debugNight: function() {
-		Mafia.nightfall();
+		if(!Mafia.isNight()) Mafia.dusk();
+		Mafia.dawn();
+		Mafia.save();
+		Mafia.schedulePhase();
 	}
 };
 
@@ -874,6 +977,7 @@ Events.Outside.push({
 				Mafia.save();
 			},
 			notification: _('the night watch saw something'),
+			decorate: Mafia.dialog(null, true),
 			buttons: {
 				'mf_watchend': { text: _('thank them'), nextScene: 'end' }
 			}

@@ -1,0 +1,87 @@
+/* Mod: The Night Council. Retro dialog boxes and the day/night marker. */
+
+/* day / night marker in the header */
+#dayPhase {
+	float: right;
+	font-size: 14px;
+	letter-spacing: 1px;
+	cursor: default;
+}
+
+#dayPhase .glyph {
+	font-size: 16px;
+	margin-right: 4px;
+}
+
+body.night #dayPhase {
+	opacity: 0.75;
+}
+
+/* dialog boxes for the council and the mod's events */
+.eventPanel.rpg {
+	width: 400px;
+}
+
+.eventPanel.rpg:after {
+	border: 4px double black;
+	box-shadow: none;
+	top: -4px;
+	left: -4px;
+}
+
+body.noMask .eventPanel.rpg:after {
+	border-color: white;
+}
+
+.eventPanel.rpg .eventTitle {
+	border: 2px solid black;
+	padding: 0 8px;
+	background-color: inherit;
+	top: -14px;
+	letter-spacing: 1px;
+}
+
+body.noMask .eventPanel.rpg .eventTitle {
+	border-color: white;
+}
+
+.eventPanel.rpg .eventTitle:after {
+	display: none;
+}
+
+.eventPanel.rpg #description {
+	font-family: "Courier New", Courier, monospace;
+	font-size: 13px;
+	min-height: 90px;
+}
+
+.eventPanel.rpg #buttons {
+	clear: both;
+}
+
+.rpgSpeaker {
+	float: left;
+	margin: 0 14px 8px 0;
+	text-align: center;
+}
+
+.rpgSpeaker canvas.portrait {
+	display: block;
+	border: 2px solid;
+	image-rendering: pixelated;
+	image-rendering: crisp-edges;
+}
+
+.rpgName {
+	margin-top: 4px;
+	font-size: 11px;
+	letter-spacing: 1px;
+}
+
+.rpgCursor {
+	animation: rpgBlink 0.8s steps(1) infinite;
+}
+
+@keyframes rpgBlink {
+	50% { opacity: 0; }
+}

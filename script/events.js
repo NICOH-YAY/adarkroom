@@ -1111,6 +1111,11 @@ var Events = {
 			$('<div>').text(scene.text[i]).appendTo(desc);
 		}
 
+		// mod: lets a scene restyle its own text (dialog boxes, portraits)
+		if(typeof scene.decorate == 'function') {
+			scene.decorate(desc);
+		}
+
 		if(scene.textarea != null) {
 			var ta = $('<textarea>').val(scene.textarea).appendTo(desc);
 			if(scene.readonly) {

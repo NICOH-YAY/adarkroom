@@ -9,7 +9,9 @@ AI-use disclosure: the mod code and this document were drafted with Claude (Anth
 
 ## The rule change
 
-In the original, a villager is a number in `game.population`. In the mod, every villager has a name, a temperament and a visible mark, like a limp or a red scarf. When people arrive, each one has a 10% chance of being a murderer, and only one murderer can live in the village at a time. Once the village has four or more people, the murderer kills one villager each night. A night comes every 3 minutes of play, or 90 seconds in hyper mode.
+In the original, a villager is a number in `game.population`. In the mod, every villager has a name, a temperament and a visible mark, like a limp or a red scarf. When people arrive, each one has a 10% chance of being a murderer, and only one murderer can live in the village at a time. Once the village has four or more people, the murderer kills one villager each night.
+
+**Day and night.** Once the village exists, one day lasts 5 minutes of play. That is 3 minutes of daylight followed by 2 minutes of night, and hyper mode halves both. A sun or a moon in the header shows which one it is. Nobody can gather wood at night. The murderer kills in the dark, so each body is found at dawn.
 
 The player never learns who the murderer is directly. After each killing the player opens **the council** (a button in the village) and works from four kinds of evidence:
 
@@ -25,6 +27,8 @@ The village can stone one person per day. If that person is the murderer, the ki
 **Sheriff.** The village can build a **watchhouse** (150 wood, 30 fur), and the player can then appoint a sheriff from three candidates. With a sheriff, the player gets two alibi checks a day. The sheriff also vouches for one innocent suspect each day and blocks half of all wrongful stonings. The murderer targets the sheriff 25% of the time. Without a sheriff, whatever the player decides happens.
 
 **Catching them in the act.** Each killing has an 8% chance to raise "A Scream in the Night." If the player seizes the figure (70% success), the murderer is stoned on the spot. If not, the player still sees the trace. A rarer "Night Watch" event can also report the trace.
+
+**Dialog boxes.** The council and the mod's events open in a retro dialog frame. When a villager speaks, their pixel portrait and name appear beside the text, and the words type out letter by letter (click to skip). Each portrait is drawn from the villager's temperament and mark, so a pious villager wears a hood and a red scarf shows in red. The rest of the game keeps its original look.
 
 **Halved cooldowns.** Every action button cooldown is cut in half (`Button.COOLDOWN_SCALE = 0.5`). That covers gather wood (60 s to 30 s), check traps (90 s to 45 s), stoke fire (10 s to 5 s), and every combat weapon, eating and meds cooldown. Timers that are not buttons keep their original lengths, including fire cooling, villager arrivals, random events and enemy attacks. Combat is therefore easier than in the original.
 
@@ -47,7 +51,8 @@ Labels follow the course's four evidence labels: `code`, `manual`, `observed`, `
 | Original: gather wood cooldown is 60 s | `code`, script/outside.js line 8 |
 | Mod: all button cooldowns scaled by 0.5 | `code`, script/Button.js lines 53 and 84 |
 | Mod: each arrival has a 10% murderer chance, and only one murderer at a time | `code`, script/mafia.js `reconcile` |
-| Mod: one killing per night once the village has 4 or more people | `code`, script/mafia.js `nightfall` / `murder` |
+| Mod: one killing per night once the village has 4 or more people, found at dawn | `code`, script/mafia.js `dawn` / `murder` |
+| Mod: 3 minutes of day, 2 of night, and no wood gathering at night | `code`, script/mafia.js `_DAYLIGHT`, `_NIGHT`, `applyPhase`; script/outside.js `gatherWood` |
 | Mod: the murderer is always among the 5 suspects | `code`, script/mafia.js `openCase` |
 | Mod: fear multiplies village income by 0.8, down to a floor of 0.5 | `code`, script/mafia.js `workRate`, script/outside.js line 522 |
 | Mod: a careful player can identify the murderer within 1 to 2 days | `observed` in simulation: a perfect-logic solver over 3,000 random cases found the murderer on day 1 in about 52 to 53% of cases and by day 2 in about 94 to 95%, with no wrong deductions (about 63% and 99% with a sheriff). Rerun it by pasting `tools/mafia-sim.js` into the browser console. This is not yet `observed` with human players. |
@@ -57,7 +62,7 @@ Labels follow the course's four evidence labels: `code`, `manual`, `observed`, `
 
 Starting state: 4 huts, population 14, a lodge, no watchhouse, a murderer present, and no killings yet.
 
-1. Night 1 falls. A random non-murderer is removed from the roster, and population goes from 14 to 13. The notification reads "a body is found at dawn. *name* is dead." "the villagers are afraid. work slows" is posted. Gatherer income falls from 11 wood to 8 wood per 10 s. One gatherer died, and the 10 left work at 80%.
+1. Night 1 ends and day 2 dawns. A random non-murderer is removed from the roster, and population goes from 14 to 13. The notification reads "a body is found at dawn. *name* is dead." "the villagers are afraid. work slows" is posted. Gatherer income falls from 11 wood to 8 wood per 10 s. One gatherer died, and the 10 left work at 80%.
 2. The council button appears in the village. Opening it lists 5 suspects. One of them is the murderer.
 3. The player checks one alibi. It comes back confirmed, denied or not sure, and the "alibis you can still chase today" count drops from 1 to 0.
 4. The player accuses the murderer. The population drops by 1, the killer is set to none, and income returns to 100%. Stores gain 450 wood, 150 fur and 150 meat (the fast-catch 1.5× reward). The case closes, and the council now reads "the village is quiet."
@@ -68,10 +73,10 @@ I ran this trace in a browser on 2026-09-23. It matched, except for the reward a
 
 ## Checking the hidden state
 
-Villagers, the murderer and the case file live in `State.game.mafia` inside the browser's saved game. A player who wants a fair game should not open it. For agent play, `Mafia.observation()` returns only what the council screen shows. A playing agent should get that and nothing else, never `State`. `Mafia.debugNight()` skips to the next night for playtesting.
+Villagers, the murderer and the case file live in `State.game.mafia` inside the browser's saved game. A player who wants a fair game should not open it. For agent play, `Mafia.observation()` returns only what the council screen shows. A playing agent should get that and nothing else, never `State`. `Mafia.debugNight()` skips to the next dawn for playtesting.
 
 ## Unresolved
 
 - Does a new player find the council button without being told? It shows up in the village only after the first killing (or once a watchhouse exists).
-- A 3-minute day is a guess. It may feel too slow early and too fast late.
+- A 5-minute day (3 light, 2 dark) is a guess. It may feel too slow early and too fast late. Losing wood at night may push players to stockpile, and I haven't measured that.
 - The Google Analytics tag from upstream is removed in this fork, so the mod sends nothing to doublespeak's analytics.
